@@ -1,0 +1,79 @@
+- name: Download k8s repo key
+  ansible.builtin.get_url:
+    url: https://pkgs.k8s.io/core:/stable:/v1.37/deb/Release.key
+    dest: /tmp/k8s-release.key
+    mode: "0644" 
+
+- name: convert .key into gpg
+  ansible.builtin.command:
+    cmd: gpg --dearmor --yes --output /etc/apt/keyrings/k8s-apt-keyring.gpg /tmp/k8s-release.key
+  args:
+    creates: /etc/apt/keyrings/k8s-apt-keyring.gpg
+
+- name: add k8s repo
+  ansible.builtin.apt_repository:
+    repo: deb [signed-by=/etc/apt/keyrings/k8s-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.37/deb/ / 
+    filename: kubernetes
+    state: present
+
+- name: Install K8s packages
+  ansible.builtin.apt:
+    name:
+      - kubelet
+      - kubeadm
+      - kubectl
+    state: present
+    update_cache: true
+
+- name: Block to update k8s packages
+  ansible.builtin.dpkg_selections:
+    name: '{{ item }}'
+    selection: hold
+  loop:
+    - kubelet
+    - kubeadm
+    - kubectl
+
+- name: enable kubelet
+  ansible.builtin.systemd:
+    name: kubelet
+    enabled: true
+
+- name: copy kubeadm-conf
+  template:
+    src: /roles/kubernetes/template/initconfig.j2
+    dest: /home/{{ ansible_user }}/kubeadm-conf.yaml
+    owner: "{{ ansible_user }}"
+    mode: '0644'
+
+- name: init k8s cluster
+  command: kubeadm init --config /home/{{ ansible_user }}/kubeadm-conf.yaml --ignore-preflight-errors=NumCPU,Mem
+  args:
+    creates: /etc/kubernetes/admin.conf
+  register: kubeadm_init
+  changed_when: kubeadm_init.rc == 0
+
+- name: Create .kube directory
+  file:
+    path: /home/{{ ansible_user }}/.kube
+    state: directory
+    mode: '0755'
+    owner: "{{ ansible_user }}"
+
+- name: copy k8s admin conf to home dir
+  copy:
+    src: /etc/kubernetes/admin.conf
+    dest: /home/{{ ansible_user }}/.kube/config
+    owner: "{{ ansible_user }}"
+    mode: '0644'
+
+- name: Change ownership of admin.conf
+  file:
+    path: /home/{{ ansible_user }}/.kube/config
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+
+- name: Install Flannel CNI
+  command: kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+  changed_when: false

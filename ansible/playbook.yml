@@ -1,0 +1,9 @@
+--- 
+- name: prepare k8s mode
+  hosts: k8s
+  become: true
+
+
+  roles:
+    - common
+    - kubernetes
