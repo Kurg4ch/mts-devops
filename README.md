@@ -214,6 +214,34 @@ up
 kubectl port-forward -n monitoring svc/<GRAFANA_SERVICE> 3000:80
 ```
 
+После этого Grafana доступна по адресу `http://localhost:3000`. Имя пользователя — `admin`.
+
+### Получение пароля Grafana
+
+Пароль администратора **не хранится в README или Ansible-переменных в открытом виде**. Он находится в Kubernetes Secret в namespace `monitoring`.
+
+Сначала найдите Secret Grafana:
+
+```bash
+kubectl get secrets -n monitoring | grep grafana
+```
+
+Затем получите пароль из ключа `admin-password`:
+
+```bash
+kubectl get secret -n monitoring <GRAFANA_SECRET> \
+  -o jsonpath="{.data.admin-password}" | base64 --decode; echo
+```
+
+Например, если Secret называется `prometheus-grafana`:
+
+```bash
+kubectl get secret -n monitoring prometheus-grafana \
+  -o jsonpath="{.data.admin-password}" | base64 --decode; echo
+```
+
+После получения пароля войдите в Grafana с логином `admin`. Такой подход позволяет не хранить учетные данные Grafana в открытом виде в Git-репозитории.
+
 ## Логирование
 
 Цепочка централизованного логирования:
