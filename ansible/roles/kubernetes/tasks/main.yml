@@ -109,6 +109,34 @@
     - "'not found' not in remove_taint.stderr"
   changed_when: remove_taint.rc == 0
 
+
+# Kyverno
+- name: helm add repo
+  command:
+    helm repo add kyverno https://kyverno.github.io/kyverno/
+  become: false
+
+- name: helm update repo
+  command:
+    helm repo update
+  become: false
+
+- name: helm install kyverno
+  command:
+    helm upgrade --install kyverno kyverno/kyverno -n kyverno --create-namespace
+  become: false
+
+- name: copy kyverno policy
+  template:
+    src: kyverno-policy.yaml
+    dest: /home/{{ ansible_user }}/kyverno-policy.yaml
+
+- name: deploy kyverno-policy
+  command:
+    kubectl apply -f /home/{{ ansible_user }}/kyverno-policy.yaml
+  become: false
+
+
 # MetalLB for external IP
 - name: deploy metalLB
   command:
@@ -134,3 +162,6 @@
   command:
     kubectl apply -f /home/{{ ansible_user }}/ipaddressPool.yaml
   become: false
+
+
+

@@ -1,0 +1,21 @@
+- name: install trivy
+  get_url:
+    url: https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh
+    dest: /tmp/trivy-install.sh
+
+- name: install trivy
+  command:
+    sh /tmp/trivy-install.sh -b /usr/local/bin v0.75.0
+
+- name: trivy scan cluster
+  command:
+    trivy k8s --report summary cluster > /tmp/trivy-scan.txt
+  become: false
+
+- name: copy scan report
+  fetch:
+    src: /tmp/trivy-scan.txt
+    dest: ./trivy-scan.txt
+    flat: true
+
+  

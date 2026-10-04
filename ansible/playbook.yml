@@ -7,8 +7,9 @@
 
   roles:
 #    - common
-#    - kubernetes
-#    - nginx
+    - kubernetes
+    - nginx
 #    - gateway
-    - prometheus
-    - logging
+#    - prometheus
+#    - logging
+    - security
