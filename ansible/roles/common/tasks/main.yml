@@ -58,9 +58,10 @@
       [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
         SystemdCgroup = true
     mode: '0644'
+  register: containerd_config
 
-- name: Enable and restart containerd
+- name: Enable and start containerd
   ansible.builtin.systemd:
     name: containerd
     enabled: true
-    state: restarted
+    state: "{{ 'restarted' if containerd_config.changed else 'started' }}"

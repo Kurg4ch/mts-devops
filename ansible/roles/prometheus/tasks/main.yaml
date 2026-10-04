@@ -6,12 +6,8 @@
   command: helm repo update
   become: false
 
-- name: create ns for monitoring
-  command: kubectl create namespace monitoring
-  become: false
-
 - name: install prometheus
-  command: helm install kube-prom-stack prometheus-community/kube-prometheus-stack -n monitoring
+  command: helm upgrade --install kube-prom-stack prometheus-community/kube-prometheus-stack -n monitoring --create-namespace
   become: false
 
 - name: copy httproute for grafana
@@ -60,4 +56,8 @@
 - name: connect loki datastored to grafana
   command:
     helm upgrade --install kube-prom-stack prometheus-community/kube-prometheus-stack -n monitoring -f /home/{{ ansible_user }}/grafana_config.yaml
+  register: prometheus_datasource_upgrade
+  until: prometheus_datasource_upgrade.rc == 0
+  retries: 12
+  delay: 10
   become: false

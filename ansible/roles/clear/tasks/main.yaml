@@ -1,0 +1,11 @@
+- name: find yaml files
+  find:
+    paths: /home/{{ ansible_user }}/
+    patterns: "*.yaml"
+  register: find_results
+
+- file:
+    path: "{{ item['path'] }}"
+    state: absent
+  with_items: "{{ find_results['files'] }}"
+    

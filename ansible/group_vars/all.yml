@@ -1,3 +1,4 @@
 ansible_become_password: "{{ lookup('env', 'ANSIBLE_PASS') }}"
 ipaddressPool: "192.168.0.200-192.168.0.220"
 interface: "enp0s8"
+trivy_scan_enabled: true

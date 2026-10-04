@@ -1,27 +1,3 @@
-#- name: download help repo key
-#  get_url:
-#    url: https://packages.buildkite.com/helm-linux/helm-debian/gpgkey
-#    dest: /tmp/helm_key.key
-#    mode: "0644"
-
-#- name: convert into gpg
-#  command:
-#    gpg --dearmor --yes --output /etc/apt/keyrings/helm_keyring.gpg /tmp/helm_key.key
-#  args:
-#    creates: /etc/apt/keyrings/helm_keyring.gpg
-
-#- name: add help repo
-#  apt_repository:
-#    repo: "deb [signed-by=/etc/apt/keyrings/helm-keyring.gpg] https://packages.buildkite.com/helm-linux/helm-debian/any/ any main"
-#    filename: helm
-#    state: present
-
-#- name: install helm
-#  apt:
-#    name: helm2
-#    state: present
-#    update_cache: true
-
 - name: download helm install script
   get_url:
     url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
@@ -31,10 +7,31 @@
 - name: run helm script
   command: bash /tmp/get_helm.sh
 
-#- name: install CRD
-#  command:
-#    kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.1/standard-install.yaml
-#  become: false
+# Kyverno
+- name: helm add repo
+  command:
+    helm repo add kyverno https://kyverno.github.io/kyverno/
+  become: false
+
+- name: helm update repo
+  command:
+    helm repo update
+  become: false
+
+- name: helm install kyverno
+  command:
+    helm upgrade --install kyverno kyverno/kyverno -n kyverno --create-namespace
+  become: false
+
+- name: copy kyverno policy
+  template:
+    src: kyverno-policy.yaml
+    dest: /home/{{ ansible_user }}/kyverno-policy.yaml
+
+- name: deploy kyverno-policy
+  command:
+    kubectl apply -f /home/{{ ansible_user }}/kyverno-policy.yaml
+  become: false
 
 - name: install Envoy Gateway
   command:

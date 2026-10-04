@@ -70,13 +70,17 @@
 
 - name: Change ownership of admin.conf
   file:
-    path: /home/{{ ansible_user }}/.kube/config.yaml
+    path: /home/{{ ansible_user }}/.kube/config
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: '0644'
 
 - name: Install Flannel CNI
   command: kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+  register: flannel_apply
+  until: flannel_apply.rc == 0
+  retries: 12
+  delay: 10
   become: false
   changed_when: false
 
@@ -110,31 +114,6 @@
   changed_when: remove_taint.rc == 0
 
 
-# Kyverno
-- name: helm add repo
-  command:
-    helm repo add kyverno https://kyverno.github.io/kyverno/
-  become: false
-
-- name: helm update repo
-  command:
-    helm repo update
-  become: false
-
-- name: helm install kyverno
-  command:
-    helm upgrade --install kyverno kyverno/kyverno -n kyverno --create-namespace
-  become: false
-
-- name: copy kyverno policy
-  template:
-    src: kyverno-policy.yaml
-    dest: /home/{{ ansible_user }}/kyverno-policy.yaml
-
-- name: deploy kyverno-policy
-  command:
-    kubectl apply -f /home/{{ ansible_user }}/kyverno-policy.yaml
-  become: false
 
 
 # MetalLB for external IP
@@ -161,7 +140,9 @@
 - name: deploy ipaddressPool
   command:
     kubectl apply -f /home/{{ ansible_user }}/ipaddressPool.yaml
+  register: ipaddress_pool_apply
+  until: ipaddress_pool_apply.rc == 0
+  retries: 12
+  delay: 10
   become: false
-
-
 

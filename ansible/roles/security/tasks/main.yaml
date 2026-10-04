@@ -2,20 +2,24 @@
   get_url:
     url: https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh
     dest: /tmp/trivy-install.sh
+  when: trivy_scan_enabled | bool
 
 - name: install trivy
   command:
     sh /tmp/trivy-install.sh -b /usr/local/bin v0.75.0
+  when: trivy_scan_enabled | bool
 
 - name: trivy scan cluster
-  command:
-    trivy k8s --report summary cluster > /tmp/trivy-scan.txt
+  shell:
+    trivy k8s --report summary --timeout 15m --disable-node-collector --skip-images > /tmp/trivy-scan.txt
   become: false
+  when: trivy_scan_enabled | bool
 
 - name: copy scan report
   fetch:
     src: /tmp/trivy-scan.txt
     dest: ./trivy-scan.txt
     flat: true
+  when: trivy_scan_enabled | bool
 
   

@@ -1,7 +1,3 @@
-### Loki
-
-
-
 ### LogStash
 
 - name: copy logstash manifest

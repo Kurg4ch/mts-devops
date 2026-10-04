@@ -5,6 +5,8 @@ nodeRegistration:
 localAPIEndpoint:
   advertiseAddress: "{{ ansible_host }}"  # Host IP for the Kubernetes API
   bindPort: 6443
+timeouts:
+  controlPlaneComponentHealthCheck: 10m
 
 ---
 apiVersion: kubeadm.k8s.io/v1beta4
