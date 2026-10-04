@@ -1,0 +1,74 @@
+#- name: download help repo key
+#  get_url:
+#    url: https://packages.buildkite.com/helm-linux/helm-debian/gpgkey
+#    dest: /tmp/helm_key.key
+#    mode: "0644"
+
+#- name: convert into gpg
+#  command:
+#    gpg --dearmor --yes --output /etc/apt/keyrings/helm_keyring.gpg /tmp/helm_key.key
+#  args:
+#    creates: /etc/apt/keyrings/helm_keyring.gpg
+
+#- name: add help repo
+#  apt_repository:
+#    repo: "deb [signed-by=/etc/apt/keyrings/helm-keyring.gpg] https://packages.buildkite.com/helm-linux/helm-debian/any/ any main"
+#    filename: helm
+#    state: present
+
+#- name: install helm
+#  apt:
+#    name: helm2
+#    state: present
+#    update_cache: true
+
+- name: download helm install script
+  get_url:
+    url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+    dest: /tmp/get_helm.sh
+    mode: '0700'
+
+- name: run helm script
+  command: bash /tmp/get_helm.sh
+
+#- name: install CRD
+#  command:
+#    kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.1/standard-install.yaml
+#  become: false
+
+- name: install Envoy Gateway
+  command:
+    helm upgrade --install eg oci://docker.io/envoyproxy/gateway-helm --version v1.6.3 -n envoy-gateway-system --create-namespace
+  become: false
+
+- name: Copy GatewayClass
+  template:
+    src: gateway_class.yaml
+    dest: /home/{{ ansible_user }}/gateway_class.yaml
+
+- name: deploy GatewayClass
+  command:
+    kubectl apply -f /home/{{ ansible_user }}/gateway_class.yaml
+  become: false
+
+- name: copy Gateway Object
+  template:
+    src: gateway_object.yaml
+    dest: /home/{{ ansible_user }}/gateway_object.yaml
+
+- name: deploy Gateway Object
+  command:
+    kubectl apply -f /home/{{ ansible_user }}/gateway_object.yaml
+  become: false
+
+- name: copy HTTPRoute
+  template:
+    src: httproute.yaml
+    dest: /home/{{ ansible_user }}/httproute.yaml
+
+- name: deploy httproute
+  command:
+    kubectl apply -f /home/{{ ansible_user }}/httproute.yaml
+  become: false
+
+

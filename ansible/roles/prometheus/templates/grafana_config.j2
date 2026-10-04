@@ -1,0 +1,8 @@
+grafana:
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      uid: loki
+      access: proxy
+      url: http://{{ loki_service.stdout }}.logging.svc.cluster.local:3100
+      editable: false

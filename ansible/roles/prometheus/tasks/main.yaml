@@ -1,0 +1,63 @@
+- name: helm add repo
+  command: helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+  become: false
+
+- name: helm update
+  command: helm repo update
+  become: false
+
+- name: create ns for monitoring
+  command: kubectl create namespace monitoring
+  become: false
+
+- name: install prometheus
+  command: helm install kube-prom-stack prometheus-community/kube-prometheus-stack -n monitoring
+  become: false
+
+- name: copy httproute for grafana
+  template:
+    src: httproute_grafana.yaml 
+    dest: /home/{{ ansible_user }}/httproute_grafana.yaml 
+
+- name: deploy httproute for grafana
+  command:
+    kubectl apply -f /home/{{ ansible_user }}/httproute_grafana.yaml 
+  become: false
+
+
+- name: add helm repo
+  command:
+    helm repo add grafana_community https://grafana-community.github.io/helm-charts
+  become: false
+
+- name: update helm
+  command:
+    helm repo update
+  become: false
+
+- name: copy Loki values
+  template:
+    src: values-loki.yaml
+    dest: /home/{{ ansible_user }}/values-loki.yaml
+
+- name: install loki
+  command:
+    helm upgrade --install loki grafana_community/loki --namespace logging --create-namespace -f /home/{{ ansible_user }}/values-loki.yaml
+  become: false
+
+- name: get loki service name
+  command: 
+    kubectl get svc -n logging -l app.kubernetes.io/name=loki -o jsonpath='{.items[0].metadata.name}'
+  register: loki_service
+  changed_when: false
+  become: false
+
+- name: Copy grafana_config
+  template:
+    src: grafana_config.j2
+    dest: /home/{{ ansible_user }}/grafana_config.yaml
+
+- name: connect loki datastored to grafana
+  command:
+    helm upgrade --install kube-prom-stack prometheus-community/kube-prometheus-stack -n monitoring -f /home/{{ ansible_user }}/grafana_config.yaml
+  become: false

@@ -1,0 +1,19 @@
+- name: copy nginx deployment to kuber node
+  template:
+    src: nginx_deployment.yaml
+    dest: /home/{{ ansible_user }}/nginx_deployment.yaml
+
+- name: deploy deployment to cluster
+  command:
+    kubectl apply -f /home/{{ ansible_user }}/nginx_deployment.yaml
+  become: false
+
+- name: copy nginx Service to kuber node
+  template:
+    src: nginx_service.yaml
+    dest: /home/{{ ansible_user }}/nginx_service.yaml
+
+- name: deploy service to cluster
+  command:
+    kubectl apply -f /home/{{ ansible_user }}/nginx_service.yaml
+  become: false

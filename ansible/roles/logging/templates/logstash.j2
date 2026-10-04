@@ -1,0 +1,77 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logstash-config
+  namespace: logging
+data:
+  logstash.conf: |
+    input {
+      beats {
+        port => 5044
+      }
+    }
+
+    output {
+      loki {
+        url => "http://{{ loki_service.stdout }}.logging.svc.cluster.local:3100/loki/api/v1/push"
+        message_field => "message"
+      }
+    }
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logstash
+  namespace: logging
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: logstash
+
+  template:
+    metadata:
+      labels:
+        app: logstash
+
+    spec:
+      containers:
+        - name: logstash
+          image: grafana/logstash-output-loki:1.0.1
+
+          args:
+            - "-f"
+            - "/usr/share/logstash/pipeline/logstash.conf"
+
+          ports:
+            - containerPort: 5044
+
+          volumeMounts:
+            - name: pipeline
+              mountPath: /usr/share/logstash/pipeline/logstash.conf
+              subPath: logstash.conf
+
+      volumes:
+        - name: pipeline
+          configMap:
+            name: logstash-config
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: logstash
+  namespace: logging
+spec:
+  selector:
+    app: logstash
+
+  ports:
+    - name: beats
+      port: 5044
+      targetPort: 5044
+
+  type: ClusterIP

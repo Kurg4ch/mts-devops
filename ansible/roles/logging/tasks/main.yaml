@@ -1,0 +1,30 @@
+### Loki
+
+
+
+### LogStash
+
+- name: copy logstash manifest
+  template:
+    src: logstash.j2
+    dest: /home/{{ ansible_user }}/logstash.yaml
+
+- name: start logstash
+  command:
+    kubectl apply -f /home/{{ ansible_user }}/logstash.yaml
+  become: false
+
+#### Filebeat
+
+- name: copy filebeat manifest
+  template:
+    src: filebeat.j2
+    dest: /home/{{ ansible_user }}/filebeat.yaml
+
+- name: start filebeat
+  command:
+    kubectl apply -f /home/{{ ansible_user }}/filebeat.yaml
+  become: false
+
+
+

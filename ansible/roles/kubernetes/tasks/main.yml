@@ -41,7 +41,7 @@
 
 - name: copy kubeadm-conf
   template:
-    src: /roles/kubernetes/template/initconfig.j2
+    src: initconfig.j2
     dest: /home/{{ ansible_user }}/kubeadm-conf.yaml
     owner: "{{ ansible_user }}"
     mode: '0644'
@@ -66,14 +66,71 @@
     dest: /home/{{ ansible_user }}/.kube/config
     owner: "{{ ansible_user }}"
     mode: '0644'
+    remote_src: true
 
 - name: Change ownership of admin.conf
   file:
-    path: /home/{{ ansible_user }}/.kube/config
+    path: /home/{{ ansible_user }}/.kube/config.yaml
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: '0644'
 
 - name: Install Flannel CNI
-  command: kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+  command: kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+  become: false
   changed_when: false
+
+- name: get node name
+  command: kubectl get nodes -o jsonpath='{.items[0].metadata.name}'
+  register: node_name
+  become: false
+  changed_when: false
+
+- name: Wait Ready status node
+  command: kubectl get node {{ node_name.stdout }} -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
+  register: node_ready
+  until: node_ready.stdout == "True"
+  retries: 10
+  delay: 30
+  become: false
+  changed_when: false
+
+
+## For Testing Stand
+
+# Single Node
+- name: Allow workloads on control-plane node
+  ansible.builtin.command:
+    cmd: kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+  become: false
+  register: remove_taint
+  failed_when:
+    - remove_taint.rc != 0
+    - "'not found' not in remove_taint.stderr"
+  changed_when: remove_taint.rc == 0
+
+# MetalLB for external IP
+- name: deploy metalLB
+  command:
+    kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.16.1/config/manifests/metallb-native.yaml
+  become: false
+
+- name: create contoller deployment
+  command:
+    kubectl -n metallb-system rollout status deployment/controller
+  become: false
+
+- name: create speaker daemonset
+  command: 
+    kubectl -n metallb-system rollout status daemonset/speaker
+  become: false
+
+- name: copy IPaddressPool
+  template:
+    src: ipaddressPool.j2
+    dest: /home/{{ ansible_user }}/ipaddressPool.yaml
+   
+- name: deploy ipaddressPool
+  command:
+    kubectl apply -f /home/{{ ansible_user }}/ipaddressPool.yaml
+  become: false
